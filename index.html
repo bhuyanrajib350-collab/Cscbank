@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="as">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSC Banking Service Portal</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+
+        * { box-sizing: border-box; font-family: 'Poppins', sans-serif; margin: 0; padding: 0; transition: all 0.3s ease; }
+        body { background: linear-gradient(135deg, #e0eafc, #cfdef3); color: #2c3e50; padding: 15px; min-height: 100vh; }
+
+        /* LOGIN SCREEN */
+        .login-container { max-width: 420px; margin: 40px auto; background: #ffffff; padding: 30px 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12); text-align: center; }
+        .login-option { background: #f8f9fa; border: 1px solid #e0e0e0; padding: 15px; margin-bottom: 15px; border-radius: 10px; text-align: left; }
+
+        /* PORTAL APP */
+        #portal-app { display: none; max-width: 650px; margin: 0 auto; }
+
+        .header { background: linear-gradient(135deg, #1a237e, #283593); color: white; padding: 20px; text-align: center; border-radius: 12px; margin-bottom: 20px; position: relative; }
+        .logout-btn { position: absolute; right: 15px; top: 18px; background: #e53935; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 600; cursor: pointer; width: auto !important; }
+
+        /* MENU BUTTONS GRID */
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .menu-btn { background: #1a237e; color: white; border: none; padding: 15px; border-radius: 10px; font-weight: 600; font-size: 0.95em; cursor: pointer; text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .menu-btn:hover { background: #283593; transform: translateY(-2px); }
+        .menu-btn.active { background: #2e7d32; }
+
+        /* SECTIONS */
+        .card { display: none; background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); margin-bottom: 20px; }
+        .card h3 { color: #1a237e; border-bottom: 2px solid #e8eaf6; padding-bottom: 8px; margin-bottom: 15px; font-weight: 600; }
+
+        input, select, button { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #dcdfe6; border-radius: 8px; font-size: 0.95em; outline: none; }
+        button.action-btn { background: #1a237e; color: white; font-weight: 600; border: none; cursor: pointer; border-radius: 8px; }
+        button.btn-green { background: #2e7d32; color: white; font-weight: 600; border: none; cursor: pointer; }
+        button.btn-red { background: #c62828; color: white; font-weight: 600; border: none; cursor: pointer; }
+        button.btn-orange { background: #e65100; color: white; font-weight: 600; border: none; cursor: pointer; }
+        button.btn-print { background: #00838f; color: white; font-weight: 600; border: none; cursor: pointer; }
+
+        /* TAB STYLING FOR TRANSACTIONS */
+        .tab-container { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+        .tab-btn { background: #e8eaf6; color: #1a237e; border: 1px solid #c5cae9; padding: 8px 12px; border-radius: 6px; font-size: 0.85em; font-weight: 600; cursor: pointer; width: auto; whitespace: nowrap; }
+        .tab-btn.active-tab { background: #1a237e; color: white; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85em; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e0e0e0; }
+        th { background: #e8eaf6; color: #1a237e; }
+
+        .badge-deposit { color: #2e7d32; font-weight: bold; }
+        .badge-withdraw { color: #c62828; font-weight: bold; }
+        .badge-opening { color: #0288d1; font-weight: bold; }
+
+        /* PRINT AREA */
+        #print-section { display: none; background: white; padding: 20px; border: 2px dashed #1a237e; border-radius: 10px; margin-top: 20px; }
+
+        @media print {
+            body * { visibility: hidden; }
+            #print-section, #print-section * { visibility: visible; }
+            #print-section { position: absolute; left: 0; top: 0; width: 100%; border: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. LOGIN SCREEN -->
+    <div id="login-screen" class="login-container">
+        <h2>🏦 CSC Bank Portal</h2>
+        <br>
+        <div class="login-option">
+            <b>1. Manager Login (Full Access)</b>
+            <input type="password" id="manager-pass" placeholder="Enter Password">
+            <button class="action-btn" onclick="loginAs('manager')">Login</button>
+        </div>
+        <div class="login-option">
+            <b>2. Staff Login (Restricted)</b>
+            <input type="password" id="staff-pass" placeholder="Enter Staff Password">
+            <button class="action-btn" onclick="loginAs('staff')">Login</button>
+        </div>
+    </div>
+
+    <!-- 2. MAIN PORTAL CONTAINER -->
+    <div id="portal-app">
+        <div class="header">
+            <h2>🏦 CSC Banking Service Portal</h2>
+            <p><small id="user-role-display"></small></p>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <!-- MAIN MENU BUTTONS -->
+        <div class="menu-grid">
+            <button class="menu-btn" id="mbtn-acc" onclick="showSection('card-acc-opening', 'mbtn-acc')">👤 Open Account</button>
+            <button class="menu-btn" id="mbtn-trans" onclick="showSection('card-deposit-withdraw', 'mbtn-trans')">💸 Cash Deposit / Withdraw</button>
+            <button class="menu-btn" id="mbtn-history" onclick="showSection('card-trans-history', 'mbtn-history')">📊 Transaction History</button>
+            <button class="menu-btn" id="mbtn-print" onclick="showSection('card-print-services', 'mbtn-print')">🖨️ Print Services</button>
+        </div>
+
+        <!-- SECTION 1: ACCOUNT OPENING -->
+        <div class="card" id="card-acc-opening">
+            <h3>👤 নতুন একাউণ্ট খোলক (Account Opening)</h3>
+            <input type="text" id="acc-name" placeholder="গ্ৰাহকৰ নাম (Full Name)">
+            <input type="number" id="acc-phone" placeholder="ম’বাইল নম্বৰ (Mobile)">
+            <input type="number" id="acc-aadhaar" placeholder="আধাৰ নম্বৰ (12 Digit Aadhaar)">
+            <input type="text" id="acc-photo" placeholder="ফটোৰ Image URL (Optional)">
+            <select id="acc-type">
+                <option value="Savings">Savings Account</option>
+                <option value="Current">Current Account</option>
+            </select>
+            <input type="number" id="acc-balance" placeholder="প্ৰাৰম্ভিক জমা (Opening Deposit ₹)">
+            <button class="action-btn" onclick="createAccount()">Account Create কৰক</button>
+        </div>
+
+        <!-- SECTION 2: CASH DEPOSIT / WITHDRAW -->
+        <div class="card" id="card-deposit-withdraw">
+            <h3>💸 টকা জমা / উলিওৱা (Cash Deposit & Withdraw)</h3>
+            <input type="number" id="trans-acc" placeholder="Account No">
+            <input type="number" id="trans-amount" placeholder="Amount (₹)">
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-green" id="btn-deposit" onclick="transaction('Deposit')">Deposit (+)</button>
+                <button class="btn-red" id="btn-withdraw" onclick="transaction('Withdraw')">Withdraw (-)</button>
+            </div>
+        </div>
+
+        <!-- SECTION 3: TRANSACTIONS HISTORY -->
+        <div class="card" id="card-trans-history">
+            <h3>📊 লেনদেনৰ ৰেকৰ্ড (Transactions History)</h3>
+            
+            <div class="tab-container">
+                <button class="tab-btn active-tab" id="tab-all" onclick="filterTransactions('ALL')">সকলো (All)</button>
+                <button class="tab-btn" id="tab-cash" onclick="filterTransactions('CASH')">Cash Deposit/Withdrawal</button>
+                <button class="tab-btn" id="tab-opening" onclick="filterTransactions('OPENING')">Account Opening</button>
+            </div>
+
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>তাৰিখ</th>
+                            <th>Acc No</th>
+                            <th>টাইপ</th>
+                            <th>পৰিমাণ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transaction-table">
+                        <!-- Dynamic Records -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- SECTION 4: PRINT SERVICES -->
+        <div class="card" id="card-print-services">
+            <h3>🖨️ প্ৰিন্ট সেৱা (Print Services)</h3>
+            <input type="number" id="search-acc" placeholder="Account No দিয়ক">
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-print" onclick="printPassbook()">Passbook Print</button>
+                <button class="btn-orange" onclick="printStatement()">Statement Print</button>
+            </div>
+        </div>
+
+        <!-- PRINT AREA -->
+        <div id="print-section"></div>
+    </div>
+
+    <script>
+        let accounts = JSON.parse(localStorage.getItem('csc_portal_accounts')) || [];
+        let allTransactions = JSON.parse(localStorage.getItem('csc_portal_transactions')) || [];
+        let currentFilter = 'ALL';
+        let currentUserRole = '';
+
+        function loginAs(role) {
+            if (role === 'manager') {
+                const passInput = document.getElementById('manager-pass').value;
+                if (passInput !== '784178') {
+                    alert('ভুল Manager পাছৱৰ্ড! (Incorrect Password)'); 
+                    return;
+                }
+            } else if (role === 'staff') {
+                const passInput = document.getElementById('staff-pass').value;
+                if (passInput !== '784168') {
+                    alert('ভুল Staff পাছৱৰ্ড! (Incorrect Password)'); 
+                    return;
+                }
+            }
+
+            currentUserRole = role;
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('portal-app').style.display = 'block';
+            document.getElementById('user-role-display').innerText = 'Role: ' + role.toUpperCase();
+
+            applyPermissions(role);
+        }
+
+        function applyPermissions(role) {
+            const mbtnAcc = document.getElementById('mbtn-acc');
+            const mbtnHistory = document.getElementById('mbtn-history');
+
+            if (role === 'manager') {
+                mbtnAcc.style.display = 'block';
+                mbtnHistory.style.display = 'block';
+                showSection('card-acc-opening', 'mbtn-acc');
+            } else if (role === 'staff') {
+                mbtnAcc.style.display = 'none';
+                mbtnHistory.style.display = 'none';
+                showSection('card-deposit-withdraw', 'mbtn-trans');
+            }
+        }
+
+        function showSection(sectionId, btnId) {
+            document.querySelectorAll('.card').forEach(card => card.style.display = 'none');
+            document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+
+            document.getElementById(sectionId).style.display = 'block';
+            if(btnId) document.getElementById(btnId).classList.add('active');
+
+            if(sectionId === 'card-trans-history') {
+                renderTransactions();
+            }
+        }
+
+        function logout() {
+            document.getElementById('portal-app').style.display = 'none';
+            document.getElementById('login-screen').style.display = 'block';
+            document.getElementById('manager-pass').value = '';
+            document.getElementById('staff-pass').value = '';
+        }
+
+        function createAccount() {
+            if(currentUserRole !== 'manager') { alert('কেৱল Manager-এ একাউণ্ট খুলিব পাৰিব!'); return; }
+
+            const name = document.getElementById('acc-name').value;
+            const phone = document.getElementById('acc-phone').value;
+            const aadhaar = document.getElementById('acc-aadhaar').value || 'N/A';
+            const photo = document.getElementById('acc-photo').value || 'https://via.placeholder.com/100';
+            const balance = parseFloat(document.getElementById('acc-balance').value) || 0;
+            
+            if(!name || !phone) { alert('নাম আৰু ফোন নম্বৰ দিয়ক!'); return; }
+
+            const accId = 1000 + accounts.length + 1;
+            const newAcc = {
+                id: accId,
+                name: name,
+                phone: phone,
+                aadhaar: aadhaar,
+                photo: photo,
+                type: document.getElementById('acc-type').value,
+                balance: balance,
+                history: [{ date: new Date().toLocaleDateString(), type: 'Account Opening', amount: balance, total: balance }]
+            };
+
+            accounts.push(newAcc);
+            
+            allTransactions.unshift({
+                date: new Date().toLocaleString(),
+                accId: accId,
+                type: 'Account Opening',
+                amount: balance,
+                category: 'OPENING'
+            });
+
+            saveData();
+            alert(`Account Created Successfully!\nAccount No: ${accId}`);
+
+            document.getElementById('acc-name').value = '';
+            document.getElementById('acc-phone').value = '';
+            document.getElementById('acc-aadhaar').value = '';
+            document.getElementById('acc-photo').value = '';
+            document.getElementById('acc-balance').value = '';
+        }
+
+        function transaction(type) {
+            const accId = parseInt(document.getElementById('trans-acc').value);
+            const amount = parseFloat(document.getElementById('trans-amount').value);
+            const acc = accounts.find(a => a.id === accId);
+
+            if (!acc || !amount) { alert('সঠিক Acc No আৰু Amount দিয়ক!'); return; }
+
+            if (type === 'Withdraw' && acc.balance < amount) { alert('ব্যালেন্স কম!'); return; }
+
+            if (type === 'Deposit') acc.balance += amount;
+            else acc.balance -= amount;
+
+            acc.history.push({ date: new Date().toLocaleDateString(), type: type, amount: amount, total: acc.balance });
+
+            allTransactions.unshift({
+                date: new Date().toLocaleString(),
+                accId: accId,
+                type: type,
+                amount: amount,
+                category: 'CASH'
+            });
+
+            saveData();
+            showReceipt(acc, type, amount);
+
+            document.getElementById('trans-acc').value = '';
+            document.getElementById('trans-amount').value = '';
+        }
+
+        function filterTransactions(filterType) {
+            currentFilter = filterType;
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active-tab'));
+            if(filterType === 'ALL') document.getElementById('tab-all').classList.add('active-tab');
+            if(filterType === 'CASH') document.getElementById('tab-cash').classList.add('active-tab');
+            if(filterType === 'OPENING') document.getElementById('tab-opening').classList.add('active-tab');
+
+            renderTransactions();
+        }
+
+        function renderTransactions() {
+            const tableBody = document.getElementById('transaction-table');
+            tableBody.innerHTML = '';
+
+            let filteredList = allTransactions;
+            if (currentFilter === 'CASH') {
+                filteredList = allTransactions.filter(t => t.category === 'CASH');
+            } else if (currentFilter === 'OPENING') {
+                filteredList = allTransactions.filter(t => t.category === 'OPENING');
+            }
+
+            if(filteredList.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">কোনো ৰেকৰ্ড নাই!</td></tr>';
+                return;
+            }
+
+            filteredList.forEach(t => {
+                let badgeClass = 'badge-deposit';
+                if(t.type === 'Withdraw') badgeClass = 'badge-withdraw';
+                if(t.type === 'Account Opening') badgeClass = 'badge-opening';
+
+                tableBody.innerHTML += `<tr>
+                    <td><small>${t.date}</small></td>
+                    <td><b>${t.accId}</b></td>
+                    <td class="${badgeClass}">${t.type}</td>
+                    <td>₹${t.amount}</td>
+                </tr>`;
+            });
+        }
+
+        function saveData() {
+            localStorage.setItem('csc_portal_accounts', JSON.stringify(accounts));
+            localStorage.setItem('csc_portal_transactions', JSON.stringify(allTransactions));
+        }
+
+        function showReceipt(acc, type, amount) {
+            const printSec = document.getElementById('print-section');
+            printSec.style.display = 'block';
+            printSec.innerHTML = `
+                <h2 style="text-align:center; color:#1a237e;">🏦 TRANSACTION RECEIPT</h2>
+                <hr><br>
+                <p><b>Date:</b> ${new Date().toLocaleString()}</p>
+                <p><b>Account No:</b> ${acc.id}</p>
+                <p><b>Name:</b> ${acc.name}</p>
+                <p><b>Transaction Type:</b> ${type}</p>
+                <p><b>Amount:</b> ₹${amount}</p>
+                <p><b>Current Balance:</b> ₹${acc.balance}</p>
+                <br>
+                <button class="action-btn" onclick="window.print()">🖨️ Print Receipt</button>
+            `;
+        }
+
+        function printPassbook() {
+            const accId = parseInt(document.getElementById('search-acc').value);
+            const acc = accounts.find(a => a.id === accId);
+            if (!acc) { alert('Account পোৱা নগ’ল!'); return; }
+
+            const printSec = document.getElementById('print-section');
+            printSec.style.display = 'block';
+            printSec.innerHTML = `
+                <div style="border: 3px double #1a237e; padding: 20px; position: relative;">
+                    <img src="${acc.photo}" style="position: absolute; right: 20px; top: 20px; width: 80px; height: 90px; border: 1px solid #ccc; object-fit: cover;">
+                    <h2 style="text-align:center; color:#1a237e;">🏦 CSC BANK PASSBOOK</h2>
+                    <hr><br>
+                    <p><b>Account Holder:</b> ${acc.name}</p>
+                    <p><b>Account No:</b> ${acc.id}</p>
+                    <p><b>Account Type:</b> ${acc.type}</p>
+                    <p><b>Aadhaar No:</b> ${acc.aadhaar}</p>
+                    <p><b>Mobile:</b> ${acc.phone}</p>
+                    <p><b>Available Balance:</b> ₹${acc.balance}</p>
+                    <br>
+                    <button class="action-btn" onclick="window.print()">🖨️ Print Passbook</button>
+                </div>
+            `;
+        }
+
+        function printStatement() {
+            const accId = parseInt(document.getElementById('search-acc').value);
+            const acc = accounts.find(a => a.id === accId);
+            if (!acc) { alert('Account পোৱা নগ’ল!'); return; }
+
+            let rows = acc.history.map(h => `
+                <tr>
+                    <td>${h.date}</td>
+                    <td>${h.type}</td>
+                    <td>₹${h.amount}</td>
+                    <td>₹${h.total}</td>
+                </tr>
+            `).join('');
+
+            const printSec = document.getElementById('print-section');
+            printSec.style.display = 'block';
+            printSec.innerHTML = `
+                <h2>📜 ACCOUNT STATEMENT</h2>
+                <p><b>Name:</b> ${acc.name} | <b>Acc No:</b> ${acc.id} | <b>Aadhaar:</b> ${acc.aadhaar}</p><br>
+                <table border="1" style="width:100%; border-collapse:collapse;">
+                    <tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th></tr>
+                    ${rows}
+                </table>
+                <br>
+                <button class="action-btn" onclick="window.print()">🖨️ Print Statement</button>
+            `;
+        }
+    </script>
+</body>
+</html>
+  
