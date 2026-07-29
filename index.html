@@ -148,7 +148,7 @@
     <!-- MAIN APP PORTAL -->
     <div id="portal-app">
         
-        <!-- PAGE 1: MAIN DASHBOARD (ONLY OPTIONS HERE) -->
+        <!-- PAGE 1: MAIN DASHBOARD -->
         <div id="page-dashboard" class="page-view active">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="color: var(--sbi-navy);">Banking Services Dashboard</h3>
@@ -171,7 +171,7 @@
                 </div>
             </div>
 
-            <!-- NAVIGATION OPTIONS (CLICKING LEADS TO A NEW PAGE) -->
+            <!-- NAVIGATION OPTIONS -->
             <div class="menu-grid" id="main-menu-grid">
                 <button class="menu-btn" id="mbtn-acc" onclick="navigateTo('page-acc-opening')"><span>➕</span>New Account</button>
                 <button class="menu-btn" id="mbtn-kyc" onclick="navigateTo('page-kyc-update')"><span>🆔</span>KYC Update</button>
@@ -296,4 +296,464 @@
                     </div>
                 </div>
             </div>
-       
+        </div>
+
+        <!-- PAGE 7: MANAGE ACCOUNTS (ADMIN ONLY) -->
+        <div id="page-admin-manage" class="page-view">
+            <div class="card">
+                <div class="card-header">
+                    <h3>👑 All Registered Accounts (Admin Panel)</h3>
+                    <button class="btn-back" onclick="navigateTo('page-dashboard')">⬅️ Back to Dashboard</button>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Account No</th>
+                                <th>Name</th>
+                                <th>Mobile</th>
+                                <th>Type</th>
+                                <th>Balance</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-account-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 8: PASSBOOK LEDGER -->
+        <div id="page-trans-history" class="page-view">
+            <div class="card">
+                <div class="card-header">
+                    <h3>📜 Passbook Transaction History</h3>
+                    <button class="btn-back" onclick="navigateTo('page-dashboard')">⬅️ Back to Dashboard</button>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Txn ID</th>
+                                <th>Date & Time</th>
+                                <th>Account</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Balance After</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trans-history-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 9: PRINT RECEIPT -->
+        <div id="page-print-services" class="page-view">
+            <div class="card no-print">
+                <div class="card-header">
+                    <h3>𖦹️ Print Official Banking Statement / Receipt</h3>
+                    <button class="btn-back" onclick="navigateTo('page-dashboard')">⬅️ Back to Dashboard</button>
+                </div>
+                <div class="form-group">
+                    <label>Enter Account Number to Print Receipt</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="number" id="print-acc-num" placeholder="Account Number">
+                        <button class="btn-sbi" style="width: 150px;" onclick="generatePrintReceipt()">Generate</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PRINTABLE SECTION -->
+            <div id="print-section">
+                <div style="text-align: center; border-bottom: 2px solid var(--sbi-navy); padding-bottom: 10px; margin-bottom: 20px;">
+                    <h2 style="color: var(--sbi-navy);">CSC STATE DIGITAL BANK</h2>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Official Digital Account Statement</p>
+                </div>
+                <div id="print-content-area"></div>
+                <div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">
+                        <p>Generated on: <span id="print-timestamp"></span></p>
+                        <p>This is a system-generated document.</p>
+                    </div>
+                    <div style="text-align: center; font-size: 0.8rem; font-weight: 600;">
+                        <p>_______________________</p>
+                        <p>Authorized Signatory</p>
+                    </div>
+                </div>
+                <button class="btn-sbi no-print" style="margin-top: 20px;" onclick="window.print()">🖨️ Print Now</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JAVASCRIPT LOGIC SYSTEM -->
+    <script>
+        // Initial Local Storage Setup
+        let accounts = JSON.parse(localStorage.getItem('csc_sbi_accounts')) || [
+            { accNo: '1001', name: 'Rajib Bhuyan', phone: '9876543210', aadhaar: '123456789012', pan: 'ABCDE1234F', type: 'Savings', balance: 25000.00, photo: '' }
+        ];
+        let transactions = JSON.parse(localStorage.getItem('csc_sbi_transactions')) || [];
+        let currentRole = null;
+        let loggedCustomerAcc = null;
+
+        // Clock Update
+        setInterval(() => {
+            document.getElementById('live-clock').innerText = new Date().toLocaleTimeString();
+        }, 1000);
+
+        // Login System
+        function loginAs(role) {
+            if (role === 'manager') {
+                const pass = document.getElementById('manager-pass').value;
+                if (pass === '784178') {
+                    currentRole = 'Manager';
+                    setupPortalView();
+                } else {
+                    alert('Invalid Manager Passcode!');
+                }
+            } else if (role === 'staff') {
+                const pass = document.getElementById('staff-pass').value;
+                if (pass === '784168') {
+                    currentRole = 'Operator';
+                    setupPortalView();
+                } else {
+                    alert('Invalid Operator PIN!');
+                }
+            } else if (role === 'customer') {
+                const acc = document.getElementById('cust-acc-input').value;
+                const phone = document.getElementById('cust-phone-input').value;
+                const user = accounts.find(a => a.accNo === acc && a.phone === phone);
+
+                if (user) {
+                    currentRole = 'Customer';
+                    loggedCustomerAcc = user.accNo;
+                    setupPortalView();
+                } else {
+                    alert('Account Not Found or Mobile Number Mismatch!');
+                }
+            }
+        }
+
+        function setupPortalView() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('portal-app').style.display = 'block';
+            
+            const tag = document.getElementById('logged-user-tag');
+            tag.style.display = 'block';
+            document.getElementById('user-role-display').innerText = 'Logged in as: ' + currentRole + (loggedCustomerAcc ? ` (${loggedCustomerAcc})` : '');
+
+            // Restrict Options Based on Role
+            if (currentRole === 'Customer') {
+                document.getElementById('admin-dash-grid').style.display = 'none';
+                document.getElementById('mbtn-acc').style.display = 'none';
+                document.getElementById('mbtn-kyc').style.display = 'none';
+                document.getElementById('mbtn-admin').style.display = 'none';
+            } else if (currentRole === 'Operator') {
+                document.getElementById('admin-dash-grid').style.display = 'grid';
+                document.getElementById('mbtn-admin').style.display = 'none';
+                document.getElementById('mbtn-acc').style.display = 'flex';
+                document.getElementById('mbtn-kyc').style.display = 'flex';
+            } else {
+                document.getElementById('admin-dash-grid').style.display = 'grid';
+                document.querySelectorAll('.menu-btn').forEach(b => b.style.display = 'flex');
+            }
+
+            refreshDashboardStats();
+        }
+
+        function logout() {
+            currentRole = null;
+            loggedCustomerAcc = null;
+            document.getElementById('login-screen').style.display = 'block';
+            document.getElementById('portal-app').style.display = 'none';
+            document.getElementById('logged-user-tag').style.display = 'none';
+        }
+
+        // Navigation Engine
+        function navigateTo(pageId) {
+            document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+
+            if (pageId === 'page-admin-manage') renderAdminTable();
+            if (pageId === 'page-trans-history') renderHistoryTable();
+        }
+
+        // Dashboard Stats
+        function refreshDashboardStats() {
+            document.getElementById('dash-customers').innerText = accounts.length;
+            const totalBalance = accounts.reduce((sum, a) => sum + parseFloat(a.balance), 0);
+            document.getElementById('dash-balance').innerText = '₹' + totalBalance.toLocaleString('en-IN', {minimumFractionDigits: 2});
+            document.getElementById('dash-transactions').innerText = transactions.length;
+        }
+
+        // Create Account
+        function createAccount() {
+            const name = document.getElementById('acc-name').value;
+            const phone = document.getElementById('acc-phone').value;
+            const aadhaar = document.getElementById('acc-aadhaar').value;
+            const pan = document.getElementById('acc-pan').value;
+            const type = document.getElementById('acc-type').value;
+            const balance = parseFloat(document.getElementById('acc-balance').value) || 0;
+            const photo = document.getElementById('acc-photo').value;
+
+            if (!name || !phone) {
+                alert('Please fill name and mobile number!');
+                return;
+            }
+
+            const newAccNo = (1000 + accounts.length + 1).toString();
+            const newAccount = { accNo: newAccNo, name, phone, aadhaar, pan, type, balance, photo };
+            
+            accounts.push(newAccount);
+            saveData();
+            alert('Account Created Successfully! New Account Number: ' + newAccNo);
+            
+            // Clear inputs
+            document.getElementById('acc-name').value = '';
+            document.getElementById('acc-phone').value = '';
+            document.getElementById('acc-aadhaar').value = '';
+            document.getElementById('acc-pan').value = '';
+            document.getElementById('acc-balance').value = '';
+            document.getElementById('acc-photo').value = '';
+
+            navigateTo('page-dashboard');
+        }
+
+        // KYC Management
+        let editingCustomerIndex = null;
+        function fetchKycCustomer() {
+            const accNum = document.getElementById('kyc-search-acc').value;
+            const idx = accounts.findIndex(a => a.accNo === accNum);
+
+            if (idx !== -1) {
+                editingCustomerIndex = idx;
+                const cust = accounts[idx];
+                document.getElementById('kyc-name').value = cust.name;
+                document.getElementById('kyc-phone').value = cust.phone;
+                document.getElementById('kyc-aadhaar').value = cust.aadhaar;
+                document.getElementById('kyc-pan').value = cust.pan;
+                document.getElementById('kyc-photo').value = cust.photo || '';
+                document.getElementById('kyc-edit-form').style.display = 'block';
+            } else {
+                alert('Account not found!');
+                document.getElementById('kyc-edit-form').style.display = 'none';
+            }
+        }
+
+        function updateKycData() {
+            if (editingCustomerIndex !== null) {
+                accounts[editingCustomerIndex].name = document.getElementById('kyc-name').value;
+                accounts[editingCustomerIndex].phone = document.getElementById('kyc-phone').value;
+                accounts[editingCustomerIndex].aadhaar = document.getElementById('kyc-aadhaar').value;
+                accounts[editingCustomerIndex].pan = document.getElementById('kyc-pan').value;
+                accounts[editingCustomerIndex].photo = document.getElementById('kyc-photo').value;
+
+                saveData();
+                alert('KYC Details Updated Successfully!');
+                document.getElementById('kyc-edit-form').style.display = 'none';
+                navigateTo('page-dashboard');
+            }
+        }
+
+        // Transactions (Deposit/Withdraw)
+        function transaction(type) {
+            const accNo = document.getElementById('trans-acc').value;
+            const amount = parseFloat(document.getElementById('trans-amount').value);
+
+            if (!accNo || isNaN(amount) || amount <= 0) {
+                alert('Please enter a valid Account Number and Amount!');
+                return;
+            }
+
+            const acc = accounts.find(a => a.accNo === accNo);
+            if (!acc) {
+                alert('Account Number does not exist!');
+                return;
+            }
+
+            if (type === 'Withdraw' && acc.balance < amount) {
+                alert('Insufficient Balance!');
+                return;
+            }
+
+            if (type === 'Deposit') acc.balance += amount;
+            if (type === 'Withdraw') acc.balance -= amount;
+
+            const txnRecord = {
+                id: 'TXN' + Math.floor(100000 + Math.random() * 900000),
+                date: new Date().toLocaleString(),
+                accNo: accNo,
+                type: type,
+                amount: amount,
+                balanceAfter: acc.balance
+            };
+
+            transactions.unshift(txnRecord);
+            saveData();
+            alert(`Transaction Successful! Current Balance: ₹${acc.balance.toFixed(2)}`);
+            document.getElementById('trans-acc').value = '';
+            document.getElementById('trans-amount').value = '';
+            navigateTo('page-dashboard');
+        }
+
+        // Fund Transfer
+        function processFundTransfer() {
+            const fromAccNo = document.getElementById('transfer-from').value;
+            const toAccNo = document.getElementById('transfer-to').value;
+            const amt = parseFloat(document.getElementById('transfer-amt').value);
+
+            if (fromAccNo === toAccNo) {
+                alert('Sender and Receiver accounts cannot be the same!');
+                return;
+            }
+
+            const sender = accounts.find(a => a.accNo === fromAccNo);
+            const receiver = accounts.find(a => a.accNo === toAccNo);
+
+            if (!sender || !receiver) {
+                alert('Invalid Sender or Receiver Account Number!');
+                return;
+            }
+
+            if (sender.balance < amt) {
+                alert('Insufficient Balance in Sender Account!');
+                return;
+            }
+
+            sender.balance -= amt;
+            receiver.balance += amt;
+
+            transactions.unshift({
+                id: 'TRF' + Math.floor(100000 + Math.random() * 900000),
+                date: new Date().toLocaleString(),
+                accNo: sender.accNo,
+                type: 'Transfer Out to ' + receiver.accNo,
+                amount: amt,
+                balanceAfter: sender.balance
+            });
+
+            transactions.unshift({
+                id: 'TRF' + Math.floor(100000 + Math.random() * 900000),
+                date: new Date().toLocaleString(),
+                accNo: receiver.accNo,
+                type: 'Transfer In from ' + sender.accNo,
+                amount: amt,
+                balanceAfter: receiver.balance
+            });
+
+            saveData();
+            alert('Fund Transfer Completed Successfully!');
+            document.getElementById('transfer-from').value = '';
+            document.getElementById('transfer-to').value = '';
+            document.getElementById('transfer-amt').value = '';
+            navigateTo('page-dashboard');
+        }
+
+        // Calculators
+        function calcFD() {
+            const p = parseFloat(document.getElementById('fd-principal').value);
+            const r = parseFloat(document.getElementById('fd-rate').value);
+            const t = parseFloat(document.getElementById('fd-years').value);
+
+            if (!p || !r || !t) return;
+            const maturity = p * Math.pow((1 + (r / 100)), t);
+            document.getElementById('fd-result').innerText = `Maturity Amount: ₹${maturity.toFixed(2)}`;
+        }
+
+        function calcEMI() {
+            const p = parseFloat(document.getElementById('emi-amount').value);
+            const r = parseFloat(document.getElementById('emi-rate').value) / 12 / 100;
+            const n = parseFloat(document.getElementById('emi-months').value);
+
+            if (!p || !r || !n) return;
+            const emi = (p * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+            document.getElementById('emi-result').innerText = `Monthly EMI: ₹${emi.toFixed(2)}`;
+        }
+
+        // Admin Table Render
+        function renderAdminTable() {
+            const tbody = document.getElementById('admin-account-list');
+            tbody.innerHTML = '';
+            accounts.forEach((a, idx) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><b>${a.accNo}</b></td>
+                        <td>${a.name}</td>
+                        <td>${a.phone}</td>
+                        <td>${a.type}</td>
+                        <td>₹${a.balance.toFixed(2)}</td>
+                        <td>
+                            <button class="btn-red" style="padding: 3px 8px; font-size: 0.75rem;" onclick="deleteAccount(${idx})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function deleteAccount(index) {
+            if (confirm('Are you sure you want to delete this account?')) {
+                accounts.splice(index, 1);
+                saveData();
+                renderAdminTable();
+            }
+        }
+
+        // History Table Render
+        function renderHistoryTable() {
+            const tbody = document.getElementById('trans-history-list');
+            tbody.innerHTML = '';
+
+            let filteredTxns = transactions;
+            if (currentRole === 'Customer') {
+                filteredTxns = transactions.filter(t => t.accNo === loggedCustomerAcc);
+            }
+
+            filteredTxns.forEach(t => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${t.id}</td>
+                        <td>${t.date}</td>
+                        <td>${t.accNo}</td>
+                        <td><span style="color: ${t.type.includes('Deposit') || t.type.includes('In') ? 'var(--success-green)' : 'var(--danger-red)'}; font-weight: 600;">${t.type}</span></td>
+                        <td>₹${t.amount.toFixed(2)}</td>
+                        <td>₹${t.balanceAfter.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Generate Print Receipt
+        function generatePrintReceipt() {
+            const accNo = document.getElementById('print-acc-num').value;
+            const acc = accounts.find(a => a.accNo === accNo);
+
+            if (!acc) {
+                alert('Account not found!');
+                return;
+            }
+
+            const area = document.getElementById('print-content-area');
+            document.getElementById('print-timestamp').innerText = new Date().toLocaleString();
+
+            area.innerHTML = `
+                <table style="width: 100%; border: 1px solid var(--border-color); margin-bottom: 20px;">
+                    <tr><td><b>Account Holder Name:</b> ${acc.name}</td><td><b>Account Number:</b> ${acc.accNo}</td></tr>
+                    <tr><td><b>Mobile Number:</b> ${acc.phone}</td><td><b>Account Type:</b> ${acc.type}</td></tr>
+                    <tr><td><b>Aadhaar Number:</b> ${acc.aadhaar || 'N/A'}</td><td><b>PAN Number:</b> ${acc.pan || 'N/A'}</td></tr>
+                    <tr><td colspan="2" style="font-size: 1.1rem; color: var(--success-green);"><b>Available Balance:</b> ₹${acc.balance.toFixed(2)}</td></tr>
+                </table>
+            `;
+
+            document.getElementById('print-section').style.display = 'block';
+        }
+
+        // Save Data Helper
+        function saveData() {
+            localStorage.setItem('csc_sbi_accounts', JSON.stringify(accounts));
+            localStorage.setItem('csc_sbi_transactions', JSON.stringify(transactions));
+            refreshDashboardStats();
+        }
+    </script>
+</body>
+</html>
